@@ -1,0 +1,1378 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>HealthVue AI — Health Monitoring Ecosystem</title>
+<link href="https://fonts.googleapis.com/css2?family=Syne:wght@400;500;700&family=DM+Sans:wght@300;400;500&display=swap" rel="stylesheet">
+<script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.js"></script>
+<style>
+*{margin:0;padding:0;box-sizing:border-box}
+:root{
+  --bg:#f0f2f8;--surface:#ffffff;--surface2:#f7f8fc;--border:#e4e7ef;
+  --text:#1a1d2e;--text2:#6b7280;--text3:#9ca3af;
+  --accent:#4f6ef7;--accent2:#7c3aed;--accent-soft:#eef1fe;
+  --success:#10b981;--warning:#f59e0b;--danger:#ef4444;
+  --sidebar:280px;--radius:16px;--shadow:0 2px 12px rgba(0,0,0,.06);
+}
+body{font-family:'DM Sans',sans-serif;background:var(--bg);color:var(--text);min-height:100vh;overflow-x:hidden}
+h1,h2,h3,h4,.logo-text,.metric-value{font-family:'Syne',sans-serif}
+
+/* Loader */
+#loader{position:fixed;inset:0;background:linear-gradient(135deg,#4f6ef7,#7c3aed);display:flex;flex-direction:column;align-items:center;justify-content:center;z-index:9999;transition:opacity .5s}
+#loader.hidden{opacity:0;pointer-events:none}
+.loader-pulse{width:56px;height:56px;border-radius:50%;background:rgba(255,255,255,.2);display:flex;align-items:center;justify-content:center;margin-bottom:24px;animation:pulse 1.5s ease-in-out infinite}
+.loader-pulse::after{content:'';width:28px;height:28px;border:3px solid #fff;border-top-color:transparent;border-radius:50%;animation:spin 0.8s linear infinite}
+.loader-text{color:#fff;font-family:'Syne',sans-serif;font-size:28px;font-weight:700;margin-bottom:8px}
+.loader-sub{color:rgba(255,255,255,.7);font-size:14px}
+@keyframes spin{to{transform:rotate(360deg)}}
+@keyframes pulse{0%,100%{transform:scale(1)}50%{transform:scale(1.1)}}
+
+/* Auth Screen */
+#authScreen{position:fixed;inset:0;background:linear-gradient(135deg,#4f6ef7 0%,#7c3aed 100%);display:flex;align-items:center;justify-content:center;z-index:1000;padding:20px}
+#authScreen.hidden{display:none}
+.auth-card{background:#fff;border-radius:24px;padding:48px 40px;width:100%;max-width:440px;box-shadow:0 24px 64px rgba(0,0,0,.15)}
+.auth-logo{text-align:center;margin-bottom:32px}
+.auth-logo-icon{width:64px;height:64px;background:linear-gradient(135deg,#4f6ef7,#7c3aed);border-radius:18px;display:inline-flex;align-items:center;justify-content:center;margin-bottom:16px}
+.auth-logo-icon svg{width:32px;height:32px;fill:none;stroke:#fff;stroke-width:2}
+.auth-logo h2{font-family:'Syne',sans-serif;font-size:24px;color:#1a1d2e;margin-bottom:4px}
+.auth-logo p{font-size:14px;color:#6b7280}
+.auth-tabs{display:flex;background:#f0f2f8;border-radius:12px;padding:4px;margin-bottom:28px}
+.auth-tab{flex:1;padding:10px;text-align:center;border-radius:8px;cursor:pointer;font-size:14px;font-weight:500;color:#6b7280;transition:.2s}
+.auth-tab.active{background:#fff;color:#4f6ef7;box-shadow:0 2px 8px rgba(0,0,0,.08)}
+.form-group{margin-bottom:16px}
+.form-label{display:block;font-size:13px;font-weight:500;color:#374151;margin-bottom:6px}
+.form-input{width:100%;padding:12px 16px;border:1.5px solid #e4e7ef;border-radius:12px;font-size:14px;font-family:'DM Sans',sans-serif;color:#1a1d2e;background:#fff;transition:.2s;outline:none}
+.form-input:focus{border-color:#4f6ef7;box-shadow:0 0 0 3px rgba(79,110,247,.1)}
+.btn-primary{width:100%;padding:14px;background:linear-gradient(135deg,#4f6ef7,#7c3aed);color:#fff;border:none;border-radius:12px;font-size:15px;font-family:'Syne',sans-serif;font-weight:700;cursor:pointer;transition:.2s;margin-top:8px}
+.btn-primary:hover{opacity:.9;transform:translateY(-1px)}
+.btn-primary:active{transform:translateY(0)}
+.demo-hint{text-align:center;margin-top:16px;font-size:13px;color:#9ca3af}
+.demo-hint button{background:none;border:none;color:#4f6ef7;cursor:pointer;font-size:13px;font-family:'DM Sans',sans-serif;font-weight:500}
+
+/* App Layout */
+#app{display:none;min-height:100vh}
+#app.visible{display:flex}
+.sidebar{width:var(--sidebar);background:var(--surface);border-right:1px solid var(--border);position:fixed;top:0;left:0;height:100vh;display:flex;flex-direction:column;z-index:100;transition:transform .3s}
+.sidebar-header{padding:28px 24px 20px;border-bottom:1px solid var(--border)}
+.logo-text{font-size:22px;font-weight:700;background:linear-gradient(135deg,#4f6ef7,#7c3aed);-webkit-background-clip:text;-webkit-text-fill-color:transparent;letter-spacing:-0.5px}
+.logo-sub{font-size:11px;color:var(--text3);letter-spacing:1px;text-transform:uppercase;margin-top:2px}
+.nav-section{padding:16px 12px;flex:1;overflow-y:auto}
+.nav-label{font-size:10px;text-transform:uppercase;letter-spacing:1.5px;color:var(--text3);padding:0 12px;margin-bottom:8px;margin-top:16px}
+.nav-item{display:flex;align-items:center;gap:12px;padding:11px 12px;border-radius:12px;cursor:pointer;transition:.2s;color:var(--text2);font-size:14px;font-weight:500;margin-bottom:2px}
+.nav-item:hover{background:var(--accent-soft);color:var(--accent)}
+.nav-item.active{background:linear-gradient(135deg,#4f6ef7,#7c3aed);color:#fff}
+.nav-item.active .nav-badge{background:rgba(255,255,255,.3);color:#fff}
+.nav-icon{width:20px;height:20px;flex-shrink:0}
+.nav-badge{font-size:11px;background:#fee2e2;color:#dc2626;border-radius:20px;padding:1px 8px;margin-left:auto}
+.sidebar-footer{padding:16px 12px;border-top:1px solid var(--border)}
+.user-card{display:flex;align-items:center;gap:10px;padding:10px 12px;border-radius:12px;cursor:pointer;transition:.2s}
+.user-card:hover{background:var(--surface2)}
+.user-avatar{width:36px;height:36px;border-radius:10px;background:linear-gradient(135deg,#4f6ef7,#7c3aed);display:flex;align-items:center;justify-content:center;color:#fff;font-family:'Syne',sans-serif;font-weight:700;font-size:14px;flex-shrink:0}
+.user-info{min-width:0;flex:1}
+.user-name{font-size:13px;font-weight:500;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.user-role{font-size:11px;color:var(--text3)}
+.logout-btn{width:28px;height:28px;border:none;background:none;cursor:pointer;color:var(--text3);border-radius:8px;display:flex;align-items:center;justify-content:center;transition:.2s;flex-shrink:0}
+.logout-btn:hover{background:#fee2e2;color:#dc2626}
+
+/* Main */
+.main{margin-left:var(--sidebar);flex:1;min-height:100vh;display:flex;flex-direction:column}
+.topbar{background:var(--surface);border-bottom:1px solid var(--border);padding:0 28px;height:64px;display:flex;align-items:center;justify-content:space-between;position:sticky;top:0;z-index:50}
+.page-title{font-family:'Syne',sans-serif;font-size:20px;font-weight:700}
+.topbar-actions{display:flex;align-items:center;gap:12px}
+.topbar-btn{width:38px;height:38px;border:1.5px solid var(--border);border-radius:10px;background:none;cursor:pointer;display:flex;align-items:center;justify-content:center;color:var(--text2);transition:.2s;position:relative}
+.topbar-btn:hover{border-color:var(--accent);color:var(--accent);background:var(--accent-soft)}
+.alert-dot{position:absolute;top:6px;right:6px;width:8px;height:8px;background:#ef4444;border-radius:50%;border:2px solid #fff}
+.content{padding:28px;flex:1}
+
+/* Pages */
+.page{display:none}
+.page.active{display:block}
+
+/* Dashboard */
+.dash-grid{display:grid;grid-template-columns:repeat(4,1fr);gap:16px;margin-bottom:24px}
+.metric-card{background:var(--surface);border-radius:var(--radius);padding:20px;border:1px solid var(--border);position:relative;overflow:hidden;transition:.2s}
+.metric-card:hover{transform:translateY(-2px);box-shadow:0 8px 24px rgba(0,0,0,.1)}
+.metric-card::before{content:'';position:absolute;top:0;right:0;width:80px;height:80px;border-radius:50%;opacity:.06;transform:translate(20px,-20px)}
+.mc-heart::before{background:#ef4444}
+.mc-bp::before{background:#f59e0b}
+.mc-sugar::before{background:#10b981}
+.mc-sleep::before{background:#4f6ef7}
+.metric-label{font-size:12px;color:var(--text2);font-weight:500;text-transform:uppercase;letter-spacing:.5px;margin-bottom:8px}
+.metric-value{font-size:32px;font-weight:700;line-height:1;margin-bottom:4px}
+.metric-unit{font-size:13px;color:var(--text3)}
+.metric-status{display:inline-flex;align-items:center;gap:4px;font-size:12px;padding:3px 8px;border-radius:20px;margin-top:8px}
+.ms-normal{background:#d1fae5;color:#065f46}
+.ms-warning{background:#fef3c7;color:#92400e}
+.ms-danger{background:#fee2e2;color:#991b1b}
+.metric-icon{position:absolute;top:16px;right:16px;width:36px;height:36px;border-radius:10px;display:flex;align-items:center;justify-content:center}
+.mi-heart{background:#fee2e2}
+.mi-bp{background:#fef3c7}
+.mi-sugar{background:#d1fae5}
+.mi-sleep{background:#e0e7ff}
+
+.dash-row{display:grid;grid-template-columns:1.6fr 1fr;gap:16px;margin-bottom:24px}
+.card{background:var(--surface);border-radius:var(--radius);padding:20px;border:1px solid var(--border)}
+.card-header{display:flex;align-items:center;justify-content:space-between;margin-bottom:16px}
+.card-title{font-family:'Syne',sans-serif;font-size:16px;font-weight:700}
+.card-action{font-size:13px;color:var(--accent);cursor:pointer;background:none;border:none;font-family:'DM Sans',sans-serif;font-weight:500}
+
+/* Risk Gauge */
+.risk-wrap{text-align:center;padding:8px 0}
+.risk-label{font-size:12px;color:var(--text2);margin-bottom:16px;text-transform:uppercase;letter-spacing:.5px}
+.gauge-svg{width:160px;margin:0 auto;display:block}
+.risk-value{font-family:'Syne',sans-serif;font-size:28px;font-weight:700;margin:8px 0 4px}
+.risk-text{font-size:13px;color:var(--text2)}
+
+/* Activity Feed */
+.activity-item{display:flex;align-items:start;gap:12px;padding:10px 0;border-bottom:1px solid var(--border)}
+.activity-item:last-child{border-bottom:none}
+.activity-dot{width:8px;height:8px;border-radius:50%;flex-shrink:0;margin-top:5px}
+.ad-normal{background:#10b981}
+.ad-warning{background:#f59e0b}
+.ad-danger{background:#ef4444}
+.activity-text{font-size:13px;color:var(--text);line-height:1.4}
+.activity-time{font-size:11px;color:var(--text3);margin-top:2px}
+
+/* Charts */
+.chart-wrap{position:relative;height:240px;margin-top:8px}
+
+/* Health Input Section */
+.input-grid{display:grid;grid-template-columns:repeat(3,1fr);gap:16px;margin-bottom:24px}
+.input-card{background:var(--surface);border-radius:var(--radius);padding:20px;border:1px solid var(--border);cursor:pointer;transition:.2s;text-align:center}
+.input-card:hover{border-color:var(--accent);transform:translateY(-2px);box-shadow:0 8px 24px rgba(79,110,247,.12)}
+.input-card.selected{border-color:var(--accent);background:var(--accent-soft)}
+.input-icon{width:48px;height:48px;border-radius:14px;display:flex;align-items:center;justify-content:center;margin:0 auto 12px}
+.input-card-title{font-family:'Syne',sans-serif;font-size:15px;font-weight:700;margin-bottom:4px}
+.input-card-desc{font-size:12px;color:var(--text2)}
+.input-form{background:var(--surface);border-radius:var(--radius);padding:24px;border:1px solid var(--border);margin-bottom:24px}
+.input-form-grid{display:grid;grid-template-columns:1fr 1fr;gap:16px}
+.range-input{width:100%;margin:8px 0}
+.value-display{font-family:'Syne',sans-serif;font-size:32px;font-weight:700;color:var(--accent);text-align:center;padding:16px;background:var(--accent-soft);border-radius:12px;margin:12px 0}
+.normal-range{font-size:12px;color:var(--text2);text-align:center}
+.btn-add{background:linear-gradient(135deg,#4f6ef7,#7c3aed);color:#fff;border:none;padding:14px 28px;border-radius:12px;font-size:15px;font-family:'Syne',sans-serif;font-weight:700;cursor:pointer;transition:.2s;display:flex;align-items:center;gap:8px}
+.btn-add:hover{opacity:.9;transform:translateY(-1px)}
+.btn-add:disabled{opacity:.5;cursor:not-allowed;transform:none}
+.btn-outline{background:none;border:1.5px solid var(--border);color:var(--text2);padding:12px 20px;border-radius:12px;font-size:14px;font-family:'DM Sans',sans-serif;font-weight:500;cursor:pointer;transition:.2s}
+.btn-outline:hover{border-color:var(--accent);color:var(--accent)}
+
+/* History Table */
+.history-table{width:100%;border-collapse:collapse}
+.history-table th{text-align:left;padding:10px 14px;font-size:12px;text-transform:uppercase;letter-spacing:.5px;color:var(--text3);font-weight:500;border-bottom:1px solid var(--border)}
+.history-table td{padding:12px 14px;font-size:14px;border-bottom:1px solid var(--border)}
+.history-table tr:last-child td{border-bottom:none}
+.history-table tr:hover td{background:var(--surface2)}
+.badge{display:inline-flex;align-items:center;gap:4px;font-size:12px;padding:3px 10px;border-radius:20px;font-weight:500}
+.badge-normal{background:#d1fae5;color:#065f46}
+.badge-warning{background:#fef3c7;color:#92400e}
+.badge-danger{background:#fee2e2;color:#991b1b}
+
+/* Appointments */
+.apt-list{display:flex;flex-direction:column;gap:12px}
+.apt-card{background:var(--surface);border-radius:var(--radius);padding:18px 20px;border:1px solid var(--border);display:flex;align-items:center;gap:16px;transition:.2s}
+.apt-card:hover{border-color:var(--accent);box-shadow:0 4px 16px rgba(79,110,247,.1)}
+.apt-date-box{width:56px;height:56px;border-radius:12px;background:linear-gradient(135deg,#4f6ef7,#7c3aed);display:flex;flex-direction:column;align-items:center;justify-content:center;flex-shrink:0;color:#fff}
+.apt-day{font-size:22px;font-family:'Syne',sans-serif;font-weight:700;line-height:1}
+.apt-month{font-size:10px;text-transform:uppercase;letter-spacing:.5px;opacity:.8}
+.apt-details{flex:1}
+.apt-name{font-weight:500;margin-bottom:2px}
+.apt-spec{font-size:13px;color:var(--text2)}
+.apt-time{font-size:13px;color:var(--accent);font-weight:500}
+.apt-type-badge{font-size:11px;background:var(--accent-soft);color:var(--accent);padding:4px 10px;border-radius:20px;font-weight:500}
+
+/* Family */
+.family-grid{display:grid;grid-template-columns:repeat(3,1fr);gap:16px}
+.family-card{background:var(--surface);border-radius:var(--radius);padding:20px;border:1px solid var(--border);text-align:center;transition:.2s;cursor:pointer}
+.family-card:hover{border-color:var(--accent);transform:translateY(-2px)}
+.family-avatar{width:64px;height:64px;border-radius:50%;background:linear-gradient(135deg,#4f6ef7,#7c3aed);display:flex;align-items:center;justify-content:center;margin:0 auto 12px;color:#fff;font-family:'Syne',sans-serif;font-size:20px;font-weight:700}
+.family-name{font-family:'Syne',sans-serif;font-size:15px;font-weight:700;margin-bottom:2px}
+.family-rel{font-size:12px;color:var(--text3);text-transform:capitalize;margin-bottom:12px}
+.family-vitals{display:flex;justify-content:center;gap:12px}
+.family-vital{text-align:center}
+.fv-val{font-size:15px;font-family:'Syne',sans-serif;font-weight:700}
+.fv-label{font-size:10px;color:var(--text3)}
+
+/* Alerts */
+.alert-list{display:flex;flex-direction:column;gap:10px}
+.alert-item{background:var(--surface);border-radius:12px;padding:14px 16px;border:1px solid var(--border);display:flex;align-items:start;gap:12px;transition:.2s}
+.alert-item.unread{border-left:3px solid var(--accent)}
+.alert-item:hover{background:var(--surface2)}
+.alert-icon{width:36px;height:36px;border-radius:10px;display:flex;align-items:center;justify-content:center;flex-shrink:0}
+.ai-critical{background:#fee2e2}
+.ai-warning{background:#fef3c7}
+.ai-info{background:#e0e7ff}
+.ai-success{background:#d1fae5}
+.alert-content{flex:1}
+.alert-title{font-weight:500;font-size:14px;margin-bottom:2px}
+.alert-msg{font-size:13px;color:var(--text2);line-height:1.4}
+.alert-time{font-size:11px;color:var(--text3);margin-top:4px}
+.alert-sev{font-size:11px;padding:2px 8px;border-radius:20px;font-weight:500;margin-left:auto;flex-shrink:0}
+.sev-critical{background:#fee2e2;color:#991b1b}
+.sev-high{background:#fef3c7;color:#92400e}
+.sev-medium{background:#e0e7ff;color:#3730a3}
+.sev-low{background:#d1fae5;color:#065f46}
+
+/* Profile */
+.profile-header{background:linear-gradient(135deg,#4f6ef7,#7c3aed);border-radius:var(--radius);padding:32px;color:#fff;margin-bottom:24px;display:flex;align-items:center;gap:24px}
+.profile-avatar-lg{width:80px;height:80px;border-radius:20px;background:rgba(255,255,255,.2);display:flex;align-items:center;justify-content:center;font-family:'Syne',sans-serif;font-size:28px;font-weight:700;flex-shrink:0}
+.profile-form-grid{display:grid;grid-template-columns:1fr 1fr;gap:16px}
+
+/* Chatbot */
+.chatbot-widget{position:fixed;bottom:24px;right:24px;z-index:500}
+.chat-toggle{width:56px;height:56px;border-radius:18px;background:linear-gradient(135deg,#4f6ef7,#7c3aed);border:none;cursor:pointer;display:flex;align-items:center;justify-content:center;box-shadow:0 8px 24px rgba(79,110,247,.4);transition:.3s}
+.chat-toggle:hover{transform:scale(1.08)}
+.chat-toggle svg{width:24px;height:24px;stroke:#fff;fill:none;stroke-width:2}
+.chat-window{position:absolute;bottom:68px;right:0;width:340px;background:var(--surface);border-radius:20px;border:1px solid var(--border);box-shadow:0 20px 60px rgba(0,0,0,.12);overflow:hidden;display:none;flex-direction:column;max-height:480px}
+.chat-window.open{display:flex}
+.chat-header{background:linear-gradient(135deg,#4f6ef7,#7c3aed);padding:14px 16px;display:flex;align-items:center;gap:10px;color:#fff}
+.chat-avatar{width:32px;height:32px;border-radius:10px;background:rgba(255,255,255,.2);display:flex;align-items:center;justify-content:center;font-family:'Syne',sans-serif;font-size:13px;font-weight:700}
+.chat-header-info{flex:1}
+.chat-name{font-family:'Syne',sans-serif;font-size:14px;font-weight:700}
+.chat-status{font-size:11px;opacity:.8}
+.chat-close{background:none;border:none;color:rgba(255,255,255,.7);cursor:pointer;padding:4px;border-radius:6px;font-size:18px;line-height:1}
+.chat-close:hover{color:#fff}
+.chat-messages{flex:1;overflow-y:auto;padding:16px;display:flex;flex-direction:column;gap:10px}
+.message{max-width:85%;padding:10px 14px;border-radius:14px;font-size:13px;line-height:1.5;white-space:pre-line}
+.message.user{background:linear-gradient(135deg,#4f6ef7,#7c3aed);color:#fff;align-self:flex-end;border-bottom-right-radius:4px}
+.message.bot{background:var(--surface2);color:var(--text);align-self:flex-start;border-bottom-left-radius:4px;border:1px solid var(--border)}
+.typing-indicator span{display:inline-block;width:6px;height:6px;border-radius:50%;background:#9ca3af;margin:0 1px;animation:bounce .8s ease-in-out infinite}
+.typing-indicator span:nth-child(2){animation-delay:.15s}
+.typing-indicator span:nth-child(3){animation-delay:.3s}
+@keyframes bounce{0%,100%{transform:translateY(0)}50%{transform:translateY(-5px)}}
+.quick-actions{display:flex;flex-wrap:wrap;gap:6px;padding:4px 0}
+.quick-action-btn{background:var(--accent-soft);color:var(--accent);border:1px solid rgba(79,110,247,.2);border-radius:20px;padding:5px 12px;font-size:11px;cursor:pointer;font-family:'DM Sans',sans-serif;font-weight:500;transition:.2s}
+.quick-action-btn:hover{background:var(--accent);color:#fff}
+.chat-input-wrap{padding:12px 14px;border-top:1px solid var(--border);display:flex;gap:8px}
+.chat-input{flex:1;border:1.5px solid var(--border);border-radius:10px;padding:9px 12px;font-size:13px;font-family:'DM Sans',sans-serif;outline:none;transition:.2s;background:var(--surface)}
+.chat-input:focus{border-color:var(--accent)}
+.chat-send{width:34px;height:34px;border:none;background:linear-gradient(135deg,#4f6ef7,#7c3aed);border-radius:10px;cursor:pointer;display:flex;align-items:center;justify-content:center;transition:.2s;flex-shrink:0}
+.chat-send:hover{opacity:.9}
+.chat-send svg{width:16px;height:16px;stroke:#fff;fill:none;stroke-width:2}
+
+/* Toast */
+#toast{position:fixed;bottom:24px;left:50%;transform:translateX(-50%) translateY(80px);background:var(--text);color:#fff;padding:12px 20px;border-radius:12px;font-size:14px;z-index:9999;transition:.3s;pointer-events:none;display:flex;align-items:center;gap:8px}
+#toast.show{transform:translateX(-50%) translateY(0)}
+.toast-icon{width:18px;height:18px;border-radius:50%;display:flex;align-items:center;justify-content:center;flex-shrink:0}
+.ti-success{background:#10b981}
+.ti-error{background:#ef4444}
+
+/* Responsive helpers */
+.section-title{font-family:'Syne',sans-serif;font-size:18px;font-weight:700;margin-bottom:16px}
+.flex-between{display:flex;align-items:center;justify-content:space-between;margin-bottom:16px}
+select.form-input{cursor:pointer}
+input[type=range]{-webkit-appearance:none;width:100%;height:6px;border-radius:3px;background:#e4e7ef;outline:none}
+input[type=range]::-webkit-slider-thumb{-webkit-appearance:none;width:20px;height:20px;border-radius:50%;background:linear-gradient(135deg,#4f6ef7,#7c3aed);cursor:pointer;box-shadow:0 2px 8px rgba(79,110,247,.4)}
+.empty-state{text-align:center;padding:48px 24px;color:var(--text2)}
+.empty-state svg{width:48px;height:48px;stroke:var(--text3);margin-bottom:16px}
+.empty-state h3{font-family:'Syne',sans-serif;font-size:18px;color:var(--text);margin-bottom:8px}
+.empty-state p{font-size:14px;line-height:1.6}
+</style>
+</head>
+<body>
+
+<!-- Loader -->
+<div id="loader">
+  <div class="loader-pulse"></div>
+  <div class="loader-text">HealthVue AI</div>
+  <div class="loader-sub">Loading your health ecosystem...</div>
+</div>
+
+<!-- Auth -->
+<div id="authScreen">
+  <div class="auth-card">
+    <div class="auth-logo">
+      <div class="auth-logo-icon">
+        <svg viewBox="0 0 32 32"><path d="M16 4C16 4 8 8 8 16C8 20.4 11.6 24 16 24C20.4 24 24 20.4 24 16C24 8 16 4 16 4Z"/><path d="M12 16L15 19L20 13" stroke-linecap="round" stroke-linejoin="round"/></svg>
+      </div>
+      <h2>HealthVue AI</h2>
+      <p>Your intelligent health monitoring ecosystem</p>
+    </div>
+    <div class="auth-tabs">
+      <div class="auth-tab active" onclick="switchAuthTab('login')">Sign In</div>
+      <div class="auth-tab" onclick="switchAuthTab('register')">Register</div>
+    </div>
+    <div id="loginForm">
+      <div class="form-group">
+        <label class="form-label">Email</label>
+        <input type="email" class="form-input" id="loginEmail" placeholder="your@email.com">
+      </div>
+      <div class="form-group">
+        <label class="form-label">Password</label>
+        <input type="password" class="form-input" id="loginPassword" placeholder="••••••••">
+      </div>
+      <button class="btn-primary" onclick="handleLogin()">Sign In</button>
+    </div>
+    <div id="registerForm" style="display:none">
+      <div class="form-group">
+        <label class="form-label">Full Name</label>
+        <input type="text" class="form-input" id="regName" placeholder="John Doe">
+      </div>
+      <div class="form-group">
+        <label class="form-label">Email</label>
+        <input type="email" class="form-input" id="regEmail" placeholder="your@email.com">
+      </div>
+      <div class="form-group">
+        <label class="form-label">Password</label>
+        <input type="password" class="form-input" id="regPassword" placeholder="••••••••">
+      </div>
+      <button class="btn-primary" onclick="handleRegister()">Create Account</button>
+    </div>
+    <div class="demo-hint">Demo account: <button onclick="demoLogin()">Use demo credentials</button></div>
+  </div>
+</div>
+
+<!-- App -->
+<div id="app">
+  <!-- Sidebar -->
+  <nav class="sidebar">
+    <div class="sidebar-header">
+      <div class="logo-text">HealthVue</div>
+      <div class="logo-sub">AI Ecosystem</div>
+    </div>
+    <div class="nav-section">
+      <div class="nav-label">Overview</div>
+      <div class="nav-item active" onclick="showPage('dashboard',this)">
+        <svg class="nav-icon" viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.7"><rect x="2" y="2" width="7" height="7" rx="2"/><rect x="11" y="2" width="7" height="7" rx="2"/><rect x="2" y="11" width="7" height="7" rx="2"/><rect x="11" y="11" width="7" height="7" rx="2"/></svg>
+        Dashboard
+      </div>
+      <div class="nav-label">Health</div>
+      <div class="nav-item" onclick="showPage('healthdata',this)">
+        <svg class="nav-icon" viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.7"><polyline points="2,12 6,8 10,11 14,5 18,8"/><path d="M2 16h16"/></svg>
+        Health Data
+      </div>
+      <div class="nav-item" onclick="showPage('appointments',this)">
+        <svg class="nav-icon" viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.7"><rect x="3" y="4" width="14" height="13" rx="2"/><path d="M7 2v4M13 2v4M3 9h14"/></svg>
+        Appointments
+      </div>
+      <div class="nav-item" onclick="showPage('family',this)">
+        <svg class="nav-icon" viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.7"><circle cx="10" cy="6" r="3"/><path d="M4 18c0-3.3 2.7-6 6-6s6 2.7 6 6"/><circle cx="16" cy="7" r="2"/><path d="M18 17c0-2.2-1.3-4-3-4.5"/></svg>
+        Family Circle
+      </div>
+      <div class="nav-label">Tools</div>
+      <div class="nav-item" onclick="showPage('alerts',this)">
+        <svg class="nav-icon" viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.7"><path d="M10 2a6 6 0 016 6v3l1.5 2.5H2.5L4 11V8a6 6 0 016-6z"/><path d="M8 16.5a2 2 0 004 0"/></svg>
+        Alerts
+        <span class="nav-badge" id="alertBadge">3</span>
+      </div>
+      <div class="nav-item" onclick="showPage('profile',this)">
+        <svg class="nav-icon" viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.7"><circle cx="10" cy="7" r="4"/><path d="M2 18c0-3.9 3.6-7 8-7s8 3.1 8 7"/></svg>
+        My Profile
+      </div>
+    </div>
+    <div class="sidebar-footer">
+      <div class="user-card">
+        <div class="user-avatar" id="sidebarAvatar">JD</div>
+        <div class="user-info">
+          <div class="user-name" id="sidebarName">John Doe</div>
+          <div class="user-role">Patient</div>
+        </div>
+        <button class="logout-btn" onclick="handleLogout()" title="Logout">
+          <svg width="16" height="16" viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.7"><path d="M13 3h4v14h-4M8 14l5-4-5-4M13 10H2"/></svg>
+        </button>
+      </div>
+    </div>
+  </nav>
+
+  <!-- Main -->
+  <div class="main">
+    <div class="topbar">
+      <div class="page-title" id="pageTitle">Dashboard</div>
+      <div class="topbar-actions">
+        <button class="topbar-btn" onclick="showPage('alerts',document.querySelector('[onclick*=alerts]'))" title="Alerts">
+          <svg width="18" height="18" viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.7"><path d="M10 2a6 6 0 016 6v3l1.5 2.5H2.5L4 11V8a6 6 0 016-6z"/><path d="M8 16.5a2 2 0 004 0"/></svg>
+          <span class="alert-dot" id="alertDot"></span>
+        </button>
+        <button class="topbar-btn" title="Settings">
+          <svg width="18" height="18" viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.7"><circle cx="10" cy="10" r="2.5"/><path d="M10 2v2M10 16v2M2 10h2M16 10h2M4.2 4.2l1.4 1.4M14.4 14.4l1.4 1.4M4.2 15.8l1.4-1.4M14.4 5.6l1.4-1.4"/></svg>
+        </button>
+      </div>
+    </div>
+
+    <div class="content">
+
+      <!-- Dashboard Page -->
+      <div class="page active" id="page-dashboard">
+        <div class="dash-grid">
+          <div class="metric-card mc-heart">
+            <div class="metric-icon mi-heart">
+              <svg width="18" height="18" viewBox="0 0 20 20" fill="#ef4444"><path d="M10 17s-7-5-7-10a5 5 0 0110 0 5 5 0 0110 0c0 5-7 10-7 10z"/></svg>
+            </div>
+            <div class="metric-label">Heart Rate</div>
+            <div class="metric-value" id="hrValue">72</div>
+            <div class="metric-unit">bpm</div>
+            <div class="metric-status ms-normal" id="hrStatus">✓ Normal</div>
+          </div>
+          <div class="metric-card mc-bp">
+            <div class="metric-icon mi-bp">
+              <svg width="18" height="18" viewBox="0 0 20 20" fill="none" stroke="#f59e0b" stroke-width="2"><path d="M10 3v14M5 8l5-5 5 5"/></svg>
+            </div>
+            <div class="metric-label">Blood Pressure</div>
+            <div class="metric-value" id="bpValue">118/76</div>
+            <div class="metric-unit">mmHg</div>
+            <div class="metric-status ms-normal" id="bpStatus">✓ Normal</div>
+          </div>
+          <div class="metric-card mc-sugar">
+            <div class="metric-icon mi-sugar">
+              <svg width="18" height="18" viewBox="0 0 20 20" fill="none" stroke="#10b981" stroke-width="2"><circle cx="10" cy="10" r="7"/><path d="M10 7v6M7 10h6"/></svg>
+            </div>
+            <div class="metric-label">Blood Sugar</div>
+            <div class="metric-value" id="sugarValue">98</div>
+            <div class="metric-unit">mg/dL</div>
+            <div class="metric-status ms-normal" id="sugarStatus">✓ Normal</div>
+          </div>
+          <div class="metric-card mc-sleep">
+            <div class="metric-icon mi-sleep">
+              <svg width="18" height="18" viewBox="0 0 20 20" fill="none" stroke="#4f6ef7" stroke-width="2"><path d="M17 12A7 7 0 119 4a5.5 5.5 0 008 8z"/></svg>
+            </div>
+            <div class="metric-label">Sleep</div>
+            <div class="metric-value" id="sleepValue">7.5</div>
+            <div class="metric-unit">hours</div>
+            <div class="metric-status ms-normal" id="sleepStatus">✓ Good</div>
+          </div>
+        </div>
+
+        <div class="dash-row">
+          <div class="card">
+            <div class="card-header">
+              <div class="card-title">Weekly Health Trends</div>
+              <select class="form-input" style="width:auto;padding:6px 12px;font-size:13px" onchange="updateChart(this.value)">
+                <option value="heart_rate">Heart Rate</option>
+                <option value="blood_sugar">Blood Sugar</option>
+                <option value="sleep">Sleep</option>
+                <option value="steps">Steps</option>
+              </select>
+            </div>
+            <div class="chart-wrap"><canvas id="trendChart"></canvas></div>
+          </div>
+          <div class="card">
+            <div class="card-header"><div class="card-title">Health Risk Score</div></div>
+            <div class="risk-wrap">
+              <div class="risk-label">Overall Risk Assessment</div>
+              <svg class="gauge-svg" viewBox="0 0 160 100" id="gaugeSvg">
+                <defs><linearGradient id="gaugeGrad" x1="0%" y1="0%" x2="100%" y2="0%"><stop offset="0%" stop-color="#10b981"/><stop offset="50%" stop-color="#f59e0b"/><stop offset="100%" stop-color="#ef4444"/></linearGradient></defs>
+                <path d="M20 85 A60 60 0 0 1 140 85" fill="none" stroke="#e4e7ef" stroke-width="14" stroke-linecap="round"/>
+                <path d="M20 85 A60 60 0 0 1 140 85" fill="none" stroke="url(#gaugeGrad)" stroke-width="14" stroke-linecap="round" stroke-dasharray="188" stroke-dashoffset="142" id="gaugeArc"/>
+                <circle cx="80" cy="85" r="6" fill="#4f6ef7" id="gaugeNeedle"/>
+              </svg>
+              <div class="risk-value" id="riskScore">24</div>
+              <div class="risk-text" id="riskLabel">Low Risk — Keep it up!</div>
+            </div>
+            <div style="margin-top:16px">
+              <div class="activity-item">
+                <div class="activity-dot ad-normal"></div>
+                <div><div class="activity-text">Heart rate within normal range</div><div class="activity-time">Updated now</div></div>
+              </div>
+              <div class="activity-item">
+                <div class="activity-dot ad-normal"></div>
+                <div><div class="activity-text">Blood pressure healthy</div><div class="activity-time">Updated now</div></div>
+              </div>
+              <div class="activity-item" id="sleepAlert">
+                <div class="activity-dot ad-normal"></div>
+                <div><div class="activity-text">Sleep quality is good</div><div class="activity-time">Updated now</div></div>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <div class="card">
+          <div class="card-header">
+            <div class="card-title">Recent Health Activity</div>
+            <button class="card-action" onclick="showPage('healthdata',document.querySelector('[onclick*=healthdata]'))">View All →</button>
+          </div>
+          <table class="history-table">
+            <thead><tr><th>Type</th><th>Value</th><th>Status</th><th>Date</th></tr></thead>
+            <tbody id="recentActivityTable"></tbody>
+          </table>
+        </div>
+      </div>
+
+      <!-- Health Data Page -->
+      <div class="page" id="page-healthdata">
+        <div class="flex-between">
+          <div class="section-title">Track Health Metrics</div>
+        </div>
+        <div class="input-grid">
+          <div class="input-card selected" onclick="selectMetric('heart_rate',this)">
+            <div class="input-icon" style="background:#fee2e2"><svg width="24" height="24" viewBox="0 0 24 24" fill="#ef4444"><path d="M12 21s-8-5.8-8-11.5A5.5 5.5 0 0112 4.5 5.5 5.5 0 0120 9.5C20 15.2 12 21 12 21z"/></svg></div>
+            <div class="input-card-title">Heart Rate</div>
+            <div class="input-card-desc">60–100 bpm normal</div>
+          </div>
+          <div class="input-card" onclick="selectMetric('blood_pressure',this)">
+            <div class="input-icon" style="background:#fef3c7"><svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="#f59e0b" stroke-width="2"><path d="M12 2v20M5 9l7-7 7 7"/><circle cx="12" cy="16" r="3"/></svg></div>
+            <div class="input-card-title">Blood Pressure</div>
+            <div class="input-card-desc">120/80 mmHg normal</div>
+          </div>
+          <div class="input-card" onclick="selectMetric('blood_sugar',this)">
+            <div class="input-icon" style="background:#d1fae5"><svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="#10b981" stroke-width="2"><circle cx="12" cy="12" r="8"/><path d="M12 8v8M8 12h8"/></svg></div>
+            <div class="input-card-title">Blood Sugar</div>
+            <div class="input-card-desc">70–140 mg/dL normal</div>
+          </div>
+          <div class="input-card" onclick="selectMetric('sleep',this)">
+            <div class="input-icon" style="background:#e0e7ff"><svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="#4f6ef7" stroke-width="2"><path d="M21 12.79A9 9 0 1111.21 3 7 7 0 0021 12.79z"/></svg></div>
+            <div class="input-card-title">Sleep</div>
+            <div class="input-card-desc">7–9 hours recommended</div>
+          </div>
+          <div class="input-card" onclick="selectMetric('steps',this)">
+            <div class="input-icon" style="background:#ede9fe"><svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="#7c3aed" stroke-width="2"><path d="M15 6.5a2.5 2.5 0 100-5 2.5 2.5 0 000 5z"/><path d="M10.5 8L8 16l5-2 3.5 4"/><path d="M8 16l-3 5"/></svg></div>
+            <div class="input-card-title">Daily Steps</div>
+            <div class="input-card-desc">10,000 steps goal</div>
+          </div>
+          <div class="input-card" onclick="selectMetric('oxygen',this)">
+            <div class="input-icon" style="background:#dbeafe"><svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="#3b82f6" stroke-width="2"><path d="M12 2a10 10 0 100 20A10 10 0 0012 2z"/><path d="M8 12s1-3 4-3 4 3 4 3-1 3-4 3-4-3-4-3z"/></svg></div>
+            <div class="input-card-title">Oxygen Level</div>
+            <div class="input-card-desc">95–100% normal SpO2</div>
+          </div>
+        </div>
+
+        <div class="input-form" id="metricInputForm">
+          <div class="card-header">
+            <div class="card-title" id="inputFormTitle">Heart Rate Input</div>
+          </div>
+          <div id="singleValueInput">
+            <div class="value-display" id="valueDisplay">72 bpm</div>
+            <input type="range" class="range-input" id="metricRange" min="40" max="180" value="72" oninput="updateRangeValue(this.value)">
+            <div class="normal-range" id="normalRange">Normal range: 60 – 100 bpm</div>
+          </div>
+          <div id="bpInput" style="display:none">
+            <div class="input-form-grid">
+              <div class="form-group">
+                <label class="form-label">Systolic (upper)</label>
+                <input type="number" class="form-input" id="systolicVal" placeholder="120" min="60" max="220" value="120" oninput="updateBPDisplay()">
+              </div>
+              <div class="form-group">
+                <label class="form-label">Diastolic (lower)</label>
+                <input type="number" class="form-input" id="diastolicVal" placeholder="80" min="40" max="140" value="80" oninput="updateBPDisplay()">
+              </div>
+            </div>
+            <div class="value-display" id="bpDisplay">120/80 mmHg</div>
+          </div>
+          <div style="display:flex;gap:12px;margin-top:16px">
+            <button class="btn-add" onclick="addHealthData()" id="addBtn">
+              <svg width="18" height="18" viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="2"><path d="M10 4v12M4 10h12"/></svg>
+              Record Data
+            </button>
+            <select class="btn-outline" id="sourceSelect">
+              <option value="manual">Manual Entry</option>
+              <option value="device">Device</option>
+              <option value="google_fit">Google Fit</option>
+            </select>
+          </div>
+        </div>
+
+        <div class="card">
+          <div class="card-header">
+            <div class="card-title">Health History</div>
+            <button class="card-action" onclick="clearHistory()">Clear All</button>
+          </div>
+          <table class="history-table">
+            <thead><tr><th>Type</th><th>Value</th><th>Source</th><th>Status</th><th>Date & Time</th></tr></thead>
+            <tbody id="historyTableBody"></tbody>
+          </table>
+          <div class="empty-state" id="historyEmpty" style="display:none">
+            <svg viewBox="0 0 48 48" fill="none"><path d="M24 4C13 4 4 13 4 24s9 20 20 20 20-9 20-20S35 4 24 4z" stroke-width="2"/><path d="M24 16v12M24 32v2" stroke-width="2" stroke-linecap="round"/></svg>
+            <h3>No data yet</h3>
+            <p>Start tracking your health metrics above to see your history here.</p>
+          </div>
+        </div>
+      </div>
+
+      <!-- Appointments Page -->
+      <div class="page" id="page-appointments">
+        <div class="flex-between">
+          <div class="section-title">Appointments</div>
+          <button class="btn-add" onclick="openAddAptForm()">
+            <svg width="16" height="16" viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="2"><path d="M10 4v12M4 10h12"/></svg>
+            Book Appointment
+          </button>
+        </div>
+
+        <div class="card" id="addAptForm" style="display:none;margin-bottom:20px">
+          <div class="card-header">
+            <div class="card-title">New Appointment</div>
+            <button class="card-action" onclick="document.getElementById('addAptForm').style.display='none'">Cancel</button>
+          </div>
+          <div class="input-form-grid">
+            <div class="form-group">
+              <label class="form-label">Doctor Name</label>
+              <input type="text" class="form-input" id="aptDoctor" placeholder="Dr. Smith">
+            </div>
+            <div class="form-group">
+              <label class="form-label">Specialty</label>
+              <input type="text" class="form-input" id="aptSpecialty" placeholder="Cardiologist">
+            </div>
+            <div class="form-group">
+              <label class="form-label">Date</label>
+              <input type="date" class="form-input" id="aptDate">
+            </div>
+            <div class="form-group">
+              <label class="form-label">Time</label>
+              <input type="time" class="form-input" id="aptTime">
+            </div>
+            <div class="form-group">
+              <label class="form-label">Type</label>
+              <select class="form-input" id="aptType">
+                <option value="in_person">In Person</option>
+                <option value="video">Video Call</option>
+                <option value="phone">Phone</option>
+              </select>
+            </div>
+            <div class="form-group">
+              <label class="form-label">Notes</label>
+              <input type="text" class="form-input" id="aptNotes" placeholder="Any specific concerns...">
+            </div>
+          </div>
+          <button class="btn-add" style="margin-top:8px" onclick="addAppointment()">Confirm Appointment</button>
+        </div>
+
+        <div class="apt-list" id="aptList"></div>
+        <div class="empty-state" id="aptEmpty">
+          <svg viewBox="0 0 48 48" fill="none"><rect x="6" y="8" width="36" height="34" rx="4" stroke-width="2"/><path d="M16 4v8M32 4v8M6 20h36" stroke-width="2" stroke-linecap="round"/></svg>
+          <h3>No appointments yet</h3>
+          <p>Book your first appointment with a healthcare provider.</p>
+        </div>
+      </div>
+
+      <!-- Family Page -->
+      <div class="page" id="page-family">
+        <div class="flex-between">
+          <div class="section-title">Family Circle</div>
+          <button class="btn-add" onclick="addFamilyMember()">
+            <svg width="16" height="16" viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="2"><path d="M10 4v12M4 10h12"/></svg>
+            Add Member
+          </button>
+        </div>
+        <div class="family-grid" id="familyGrid"></div>
+      </div>
+
+      <!-- Alerts Page -->
+      <div class="page" id="page-alerts">
+        <div class="flex-between">
+          <div class="section-title">Health Alerts</div>
+          <button class="btn-outline" onclick="markAllRead()">Mark All Read</button>
+        </div>
+        <div class="alert-list" id="alertsList"></div>
+      </div>
+
+      <!-- Profile Page -->
+      <div class="page" id="page-profile">
+        <div class="profile-header">
+          <div class="profile-avatar-lg" id="profileAvatarLg">JD</div>
+          <div>
+            <div style="font-size:24px;font-family:'Syne',sans-serif;font-weight:700" id="profileName">John Doe</div>
+            <div style="opacity:.8;margin-top:4px" id="profileEmail">john@example.com</div>
+            <div style="margin-top:12px;display:flex;gap:12px">
+              <div><span style="font-size:20px;font-family:'Syne',sans-serif;font-weight:700" id="profileAge">32</span><span style="opacity:.7;font-size:13px;margin-left:4px">yrs</span></div>
+              <div><span style="font-size:20px;font-family:'Syne',sans-serif;font-weight:700" id="profileWeight">70</span><span style="opacity:.7;font-size:13px;margin-left:4px">kg</span></div>
+              <div><span style="font-size:20px;font-family:'Syne',sans-serif;font-weight:700" id="profileHeight">175</span><span style="opacity:.7;font-size:13px;margin-left:4px">cm</span></div>
+            </div>
+          </div>
+        </div>
+        <div class="card">
+          <div class="card-header"><div class="card-title">Edit Profile</div></div>
+          <div class="profile-form-grid">
+            <div class="form-group"><label class="form-label">Full Name</label><input type="text" class="form-input" id="pName"></div>
+            <div class="form-group"><label class="form-label">Age</label><input type="number" class="form-input" id="pAge"></div>
+            <div class="form-group"><label class="form-label">Gender</label>
+              <select class="form-input" id="pGender"><option value="male">Male</option><option value="female">Female</option><option value="other">Other</option></select>
+            </div>
+            <div class="form-group"><label class="form-label">Weight (kg)</label><input type="number" class="form-input" id="pWeight"></div>
+            <div class="form-group"><label class="form-label">Height (cm)</label><input type="number" class="form-input" id="pHeight"></div>
+            <div class="form-group"><label class="form-label">Emergency Contact</label><input type="text" class="form-input" id="pEmergency" placeholder="Name & Phone"></div>
+          </div>
+          <button class="btn-add" style="margin-top:16px" onclick="saveProfile()">Save Profile</button>
+        </div>
+      </div>
+
+    </div><!-- content -->
+  </div><!-- main -->
+</div><!-- app -->
+
+<!-- Chatbot -->
+<div class="chatbot-widget" id="chatbotWidget">
+  <div class="chat-window" id="chatWindow">
+    <div class="chat-header">
+      <div class="chat-avatar">AI</div>
+      <div class="chat-header-info">
+        <div class="chat-name">HealthVue AI</div>
+        <div class="chat-status">Online · Ready to help</div>
+      </div>
+      <button class="chat-close" onclick="toggleChat()">✕</button>
+    </div>
+    <div class="chat-messages" id="chatMessages">
+      <div class="message bot">Hello! I'm your AI health assistant. How can I help you today?</div>
+    </div>
+    <div class="chat-input-wrap">
+      <input type="text" class="chat-input" id="chatInput" placeholder="Ask me anything..." onkeypress="if(event.key==='Enter')sendChatMessage()">
+      <button class="chat-send" onclick="sendChatMessage()">
+        <svg viewBox="0 0 20 20"><path d="M18 10L4 4l2 6-2 6 14-6z" stroke-linecap="round" stroke-linejoin="round"/></svg>
+      </button>
+    </div>
+  </div>
+  <button class="chat-toggle" onclick="toggleChat()">
+    <svg viewBox="0 0 24 24"><path d="M21 15a2 2 0 01-2 2H7l-4 4V5a2 2 0 012-2h14a2 2 0 012 2z" stroke-linecap="round" stroke-linejoin="round"/></svg>
+  </button>
+</div>
+
+<!-- Toast -->
+<div id="toast"><span class="toast-icon ti-success">✓</span><span id="toastMsg">Success</span></div>
+
+<script>
+// ==================== APP STATE ====================
+let state = {
+  user: null,
+  healthData: [],
+  appointments: [],
+  family: [],
+  alerts: [],
+  selectedMetric: 'heart_rate',
+  chatOpen: false,
+  chatHistory: []
+};
+
+// ==================== INIT ====================
+window.addEventListener('load', () => {
+  setTimeout(() => {
+    document.getElementById('loader').classList.add('hidden');
+    const saved = localStorage.getItem('hv_user');
+    if (saved) {
+      state.user = JSON.parse(saved);
+      loadAppData();
+      showApp();
+    } else {
+      document.getElementById('authScreen').classList.remove('hidden');
+    }
+  }, 1800);
+});
+
+function loadAppData() {
+  state.healthData = JSON.parse(localStorage.getItem('hv_health') || '[]');
+  state.appointments = JSON.parse(localStorage.getItem('hv_apts') || '[]');
+  state.family = JSON.parse(localStorage.getItem('hv_family') || '[]');
+  state.alerts = JSON.parse(localStorage.getItem('hv_alerts') || '[]');
+  state.chatHistory = JSON.parse(localStorage.getItem('hv_chat') || '[]');
+}
+
+function saveData() {
+  localStorage.setItem('hv_health', JSON.stringify(state.healthData));
+  localStorage.setItem('hv_apts', JSON.stringify(state.appointments));
+  localStorage.setItem('hv_family', JSON.stringify(state.family));
+  localStorage.setItem('hv_alerts', JSON.stringify(state.alerts));
+  localStorage.setItem('hv_chat', JSON.stringify(state.chatHistory));
+}
+
+// ==================== AUTH ====================
+function switchAuthTab(tab) {
+  document.querySelectorAll('.auth-tab').forEach((t,i) => t.classList.toggle('active', (tab==='login'&&i===0)||(tab==='register'&&i===1)));
+  document.getElementById('loginForm').style.display = tab==='login' ? 'block' : 'none';
+  document.getElementById('registerForm').style.display = tab==='register' ? 'block' : 'none';
+}
+
+function handleLogin() {
+  const email = document.getElementById('loginEmail').value;
+  const pwd = document.getElementById('loginPassword').value;
+  if (!email || !pwd) { showToast('Please fill all fields','error'); return; }
+  const users = JSON.parse(localStorage.getItem('hv_users') || '[]');
+  const user = users.find(u => u.email===email && u.password===pwd);
+  if (!user) { showToast('Invalid credentials','error'); return; }
+  loginUser(user);
+}
+
+function handleRegister() {
+  const name = document.getElementById('regName').value;
+  const email = document.getElementById('regEmail').value;
+  const pwd = document.getElementById('regPassword').value;
+  if (!name || !email || !pwd) { showToast('Please fill all fields','error'); return; }
+  const users = JSON.parse(localStorage.getItem('hv_users') || '[]');
+  if (users.find(u => u.email===email)) { showToast('Email already registered','error'); return; }
+  const user = {id: Date.now(), name, email, password: pwd, age:30, weight:70, height:175, gender:'male'};
+  users.push(user);
+  localStorage.setItem('hv_users', JSON.stringify(users));
+  // Seed demo data
+  seedDemoData(user.id);
+  loginUser(user);
+}
+
+function demoLogin() {
+  const users = JSON.parse(localStorage.getItem('hv_users') || '[]');
+  let demo = users.find(u => u.email==='demo@healthvue.ai');
+  if (!demo) {
+    demo = {id:'demo123',name:'Alex Johnson',email:'demo@healthvue.ai',password:'demo',age:32,weight:74,height:178,gender:'male'};
+    users.push(demo);
+    localStorage.setItem('hv_users', JSON.stringify(users));
+    seedDemoData('demo123');
+  }
+  loginUser(demo);
+}
+
+function loginUser(user) {
+  state.user = user;
+  localStorage.setItem('hv_user', JSON.stringify(user));
+  loadAppData();
+  document.getElementById('authScreen').classList.add('hidden');
+  showApp();
+}
+
+function handleLogout() {
+  state.user = null;
+  localStorage.removeItem('hv_user');
+  document.getElementById('app').style.display = 'none';
+  document.getElementById('app').classList.remove('visible');
+  document.getElementById('authScreen').classList.remove('hidden');
+  showToast('Logged out successfully');
+}
+
+function showApp() {
+  const app = document.getElementById('app');
+  app.style.display = 'flex';
+  app.classList.add('visible');
+  updateUserUI();
+  initDashboard();
+  renderAlerts();
+  renderAppointments();
+  renderFamily();
+  renderHistory();
+  loadProfile();
+}
+
+// ==================== DEMO DATA ====================
+function seedDemoData(userId) {
+  const now = Date.now();
+  const health = [];
+  const types = ['heart_rate','blood_pressure','blood_sugar','sleep','steps'];
+  for (let i=29; i>=0; i--) {
+    const d = now - i*86400000;
+    health.push({id:d+1,userId,type:'heart_rate',value:68+Math.floor(Math.random()*15),unit:'bpm',source:'manual',anomaly:false,timestamp:d});
+    health.push({id:d+2,userId,type:'blood_sugar',value:85+Math.floor(Math.random()*30),unit:'mg/dL',source:'manual',anomaly:false,timestamp:d+1000});
+    health.push({id:d+3,userId,type:'sleep',value:(6.5+Math.random()*2).toFixed(1),unit:'hours',source:'manual',anomaly:false,timestamp:d+2000});
+    if (i%2===0) health.push({id:d+4,userId,type:'steps',value:6000+Math.floor(Math.random()*5000),unit:'steps',source:'device',anomaly:false,timestamp:d+3000});
+    if (i%3===0) health.push({id:d+5,userId,type:'blood_pressure',value:'118/76',systolic:118,diastolic:76,unit:'mmHg',source:'manual',anomaly:false,timestamp:d+4000});
+  }
+  localStorage.setItem('hv_health', JSON.stringify(health));
+
+  const alerts = [
+    {id:1,userId,type:'anomaly',title:'Heart Rate Alert',message:'Elevated heart rate detected: 102 bpm. Consider resting.',severity:'medium',read:false,createdAt:now-3600000},
+    {id:2,userId,type:'recommendation',title:'Daily Health Tip',message:'You\'ve been averaging 6.8 hours of sleep. Try to reach 7-8 hours for optimal recovery.',severity:'low',read:false,createdAt:now-7200000},
+    {id:3,userId,type:'appointment',title:'Upcoming Appointment',message:'Reminder: Appointment with Dr. Sarah Chen tomorrow at 10:00 AM.',severity:'medium',read:false,createdAt:now-86400000},
+    {id:4,userId,type:'recommendation',title:'Step Goal',message:'You hit 12,450 steps yesterday. Excellent! Keep maintaining your activity level.',severity:'low',read:true,createdAt:now-172800000}
+  ];
+  localStorage.setItem('hv_alerts', JSON.stringify(alerts));
+
+  const apts = [
+    {id:1,userId,doctorName:'Dr. Sarah Chen',specialty:'Cardiologist',date:Date.now()+86400000*3,time:'10:00',type:'in_person',status:'scheduled',notes:'Annual checkup'},
+    {id:2,userId,doctorName:'Dr. Raj Patel',specialty:'General Physician',date:Date.now()+86400000*10,time:'14:30',type:'video',status:'scheduled',notes:'Follow-up consultation'}
+  ];
+  localStorage.setItem('hv_apts', JSON.stringify(apts));
+
+  const family = [
+    {id:1,userId,name:'Mary Johnson',relationship:'parent',age:58,initials:'MJ',latestHR:71,latestBP:'125/82'},
+    {id:2,userId,name:'Tom Johnson',relationship:'sibling',age:28,initials:'TJ',latestHR:68,latestBP:'118/75'}
+  ];
+  localStorage.setItem('hv_family', JSON.stringify(family));
+}
+
+// ==================== UI UPDATES ====================
+function updateUserUI() {
+  if (!state.user) return;
+  const initials = state.user.name.split(' ').map(n=>n[0]).join('').slice(0,2).toUpperCase();
+  document.getElementById('sidebarAvatar').textContent = initials;
+  document.getElementById('sidebarName').textContent = state.user.name;
+  document.getElementById('profileAvatarLg').textContent = initials;
+  document.getElementById('profileName').textContent = state.user.name;
+  document.getElementById('profileEmail').textContent = state.user.email;
+  document.getElementById('profileAge').textContent = state.user.age||'—';
+  document.getElementById('profileWeight').textContent = state.user.weight||'—';
+  document.getElementById('profileHeight').textContent = state.user.height||'—';
+  loadProfile();
+  updateAlertBadge();
+}
+
+function showPage(id, el) {
+  document.querySelectorAll('.page').forEach(p=>p.classList.remove('active'));
+  document.querySelectorAll('.nav-item').forEach(n=>n.classList.remove('active'));
+  document.getElementById('page-'+id).classList.add('active');
+  if (el) el.classList.add('active');
+  const titles = {dashboard:'Dashboard',healthdata:'Health Data',appointments:'Appointments',family:'Family Circle',alerts:'Alerts & Notifications',profile:'My Profile'};
+  document.getElementById('pageTitle').textContent = titles[id]||id;
+  if (id==='dashboard') initDashboard();
+  if (id==='alerts') renderAlerts();
+  if (id==='appointments') renderAppointments();
+  if (id==='family') renderFamily();
+  if (id==='healthdata') renderHistory();
+}
+
+// ==================== DASHBOARD ====================
+let trendChart = null;
+
+function initDashboard() {
+  updateMetricCards();
+  updateRiskGauge();
+  renderRecentActivity();
+  initTrendChart('heart_rate');
+}
+
+function updateMetricCards() {
+  const data = state.healthData;
+  const latest = (type) => data.filter(d=>d.type===type).sort((a,b)=>b.timestamp-a.timestamp)[0];
+  const hr = latest('heart_rate');
+  const bp = latest('blood_pressure');
+  const bs = latest('blood_sugar');
+  const sl = latest('sleep');
+
+  if (hr) {
+    document.getElementById('hrValue').textContent = hr.value;
+    const status = hr.value < 60 ? 'Low' : hr.value > 100 ? 'High' : 'Normal';
+    document.getElementById('hrStatus').textContent = status==='Normal'?'✓ Normal':'⚠ '+status;
+    document.getElementById('hrStatus').className = 'metric-status ' + (status==='Normal'?'ms-normal':'ms-warning');
+  }
+  if (bp) document.getElementById('bpValue').textContent = bp.value;
+  if (bs) {
+    document.getElementById('sugarValue').textContent = bs.value;
+    const ok = bs.value>=70 && bs.value<=140;
+    document.getElementById('sugarStatus').textContent = ok?'✓ Normal':'⚠ Check';
+    document.getElementById('sugarStatus').className = 'metric-status '+(ok?'ms-normal':'ms-warning');
+  }
+  if (sl) {
+    document.getElementById('sleepValue').textContent = sl.value;
+    document.getElementById('sleepStatus').textContent = sl.value>=7?'✓ Good':'⚠ Low';
+    document.getElementById('sleepStatus').className = 'metric-status '+(sl.value>=7?'ms-normal':'ms-warning');
+  }
+}
+
+function updateRiskGauge() {
+  const data = state.healthData;
+  let risk = 0;
+  const hr = data.filter(d=>d.type==='heart_rate').slice(-5);
+  const sl = data.filter(d=>d.type==='sleep').slice(-5);
+  const bs = data.filter(d=>d.type==='blood_sugar').slice(-5);
+  if (hr.length) { const avg = hr.reduce((s,d)=>s+Number(d.value),0)/hr.length; if(avg>90)risk+=25; }
+  if (sl.length) { const avg = sl.reduce((s,d)=>s+Number(d.value),0)/sl.length; if(avg<7)risk+=20; }
+  if (bs.length) { const avg = bs.reduce((s,d)=>s+Number(d.value),0)/bs.length; if(avg>140)risk+=30; }
+  document.getElementById('riskScore').textContent = risk;
+  const labels = [[0,'Low Risk — Keep it up!'],[30,'Moderate — Watch trends'],[55,'Elevated — Consult doctor'],[80,'High — Seek care']];
+  const lbl = labels.reduce((acc,l)=>risk>=l[0]?l:acc,labels[0]);
+  document.getElementById('riskLabel').textContent = lbl[1];
+  const arc = document.getElementById('gaugeArc');
+  const needle = document.getElementById('gaugeNeedle');
+  const pct = Math.min(risk/100,1);
+  arc.setAttribute('stroke-dashoffset', 188 - pct*188);
+  const angle = -150 + pct*120;
+  const rad = angle*Math.PI/180;
+  const nx = 80 + 54*Math.cos(rad);
+  const ny = 85 + 54*Math.sin(rad);
+  needle.setAttribute('cx', nx);
+  needle.setAttribute('cy', ny);
+}
+
+function renderRecentActivity() {
+  const tbody = document.getElementById('recentActivityTable');
+  const recent = state.healthData.sort((a,b)=>b.timestamp-a.timestamp).slice(0,5);
+  tbody.innerHTML = recent.map(d => {
+    const status = d.anomaly ? '<span class="badge badge-warning">⚠ Alert</span>' : '<span class="badge badge-normal">✓ Normal</span>';
+    const typeLabel = d.type.replace(/_/g,' ').replace(/\b\w/g,l=>l.toUpperCase());
+    const date = new Date(d.timestamp).toLocaleDateString('en-IN',{day:'numeric',month:'short',hour:'2-digit',minute:'2-digit'});
+    return `<tr><td>${typeLabel}</td><td><strong>${d.value} ${d.unit||''}</strong></td><td>${status}</td><td style="color:var(--text2);font-size:13px">${date}</td></tr>`;
+  }).join('') || '<tr><td colspan="4" style="text-align:center;color:var(--text2);padding:24px">No data yet. Add health metrics to see them here.</td></tr>';
+}
+
+function initTrendChart(type) {
+  const ctx = document.getElementById('trendChart').getContext('2d');
+  if (trendChart) trendChart.destroy();
+  const filtered = state.healthData.filter(d=>d.type===type).sort((a,b)=>a.timestamp-b.timestamp).slice(-14);
+  const labels = filtered.map(d=>new Date(d.timestamp).toLocaleDateString('en-IN',{day:'numeric',month:'short'}));
+  let values = filtered.map(d=>type==='blood_pressure'?Number(d.value.toString().split('/')[0]):Number(d.value));
+  const colors = {heart_rate:'#ef4444',blood_sugar:'#10b981',sleep:'#4f6ef7',steps:'#7c3aed',blood_pressure:'#f59e0b'};
+  const c = colors[type]||'#4f6ef7';
+  trendChart = new Chart(ctx, {
+    type:'line',
+    data:{labels,datasets:[{label:type.replace(/_/g,' '),data:values,borderColor:c,backgroundColor:c+'22',borderWidth:2.5,tension:0.4,pointRadius:4,pointBackgroundColor:c,fill:true}]},
+    options:{responsive:true,maintainAspectRatio:false,plugins:{legend:{display:false}},scales:{x:{grid:{color:'#f0f2f8'},ticks:{font:{size:11},color:'#9ca3af'}},y:{grid:{color:'#f0f2f8'},ticks:{font:{size:11},color:'#9ca3af'}}}}
+  });
+}
+
+function updateChart(type) { initTrendChart(type); }
+
+// ==================== HEALTH DATA ====================
+const metricConfig = {
+  heart_rate:{label:'Heart Rate',unit:'bpm',min:40,max:180,def:72,normal:'60 – 100 bpm'},
+  blood_sugar:{label:'Blood Sugar',unit:'mg/dL',min:40,max:300,def:100,normal:'70 – 140 mg/dL'},
+  sleep:{label:'Sleep',unit:'hours',min:0,max:12,def:7.5,step:0.5,normal:'7 – 9 hours'},
+  steps:{label:'Daily Steps',unit:'steps',min:0,max:30000,def:8000,normal:'Goal: 10,000 steps'},
+  oxygen:{label:'Oxygen Level',unit:'%',min:80,max:100,def:98,normal:'95 – 100%'},
+  blood_pressure:{label:'Blood Pressure',unit:'mmHg',normal:'< 120/80 mmHg'}
+};
+
+function selectMetric(type, el) {
+  state.selectedMetric = type;
+  document.querySelectorAll('.input-card').forEach(c=>c.classList.remove('selected'));
+  el.classList.add('selected');
+  const cfg = metricConfig[type];
+  document.getElementById('inputFormTitle').textContent = cfg.label+' Input';
+  if (type==='blood_pressure') {
+    document.getElementById('singleValueInput').style.display='none';
+    document.getElementById('bpInput').style.display='block';
+  } else {
+    document.getElementById('singleValueInput').style.display='block';
+    document.getElementById('bpInput').style.display='none';
+    const range = document.getElementById('metricRange');
+    range.min=cfg.min; range.max=cfg.max; range.value=cfg.def; range.step=cfg.step||1;
+    document.getElementById('normalRange').textContent='Normal range: '+cfg.normal;
+    updateRangeValue(cfg.def);
+  }
+}
+
+function updateRangeValue(val) {
+  const type = state.selectedMetric;
+  const unit = metricConfig[type]?.unit||'';
+  document.getElementById('valueDisplay').textContent = val+' '+unit;
+}
+
+function updateBPDisplay() {
+  const s = document.getElementById('systolicVal').value||'120';
+  const d = document.getElementById('diastolicVal').value||'80';
+  document.getElementById('bpDisplay').textContent = s+'/'+d+' mmHg';
+}
+
+function addHealthData() {
+  const type = state.selectedMetric;
+  const cfg = metricConfig[type];
+  let value, systolic, diastolic, anomaly=false, anomalyReason='';
+
+  if (type==='blood_pressure') {
+    systolic = parseInt(document.getElementById('systolicVal').value)||120;
+    diastolic = parseInt(document.getElementById('diastolicVal').value)||80;
+    value = systolic+'/'+diastolic;
+    if (systolic>=180||diastolic>=120) { anomaly=true; anomalyReason='Hypertensive Crisis'; }
+    else if (systolic>=140||diastolic>=90) { anomaly=true; anomalyReason='High blood pressure'; }
+  } else {
+    value = parseFloat(document.getElementById('metricRange').value);
+    if (type==='heart_rate') { if(value>100||value<60){anomaly=true;anomalyReason=value>100?'Elevated heart rate':'Low heart rate';} }
+    if (type==='blood_sugar') { if(value>140){anomaly=true;anomalyReason='High blood sugar';}else if(value<70){anomaly=true;anomalyReason='Low blood sugar';} }
+    if (type==='sleep') { if(value<7){anomaly=true;anomalyReason='Insufficient sleep';} }
+  }
+
+  const record = {id:Date.now(),userId:state.user.id,type,value,systolic,diastolic,unit:cfg.unit,source:document.getElementById('sourceSelect').value,anomaly,anomalyReason,timestamp:Date.now()};
+  state.healthData.push(record);
+
+  if (anomaly) {
+    state.alerts.unshift({id:Date.now(),userId:state.user.id,type:'anomaly',title:cfg.label+' Alert',message:anomalyReason+': '+value+(cfg.unit?' '+cfg.unit:''),severity:anomaly?'medium':'low',read:false,createdAt:Date.now()});
+    updateAlertBadge();
+  }
+
+  saveData();
+  renderHistory();
+  renderRecentActivity();
+  updateMetricCards();
+  updateRiskGauge();
+  showToast(anomaly?'⚠ Anomaly detected: '+anomalyReason:'Health data recorded successfully',anomaly?'warning':'success');
+}
+
+function renderHistory() {
+  const tbody = document.getElementById('historyTableBody');
+  const empty = document.getElementById('historyEmpty');
+  const sorted = [...state.healthData].sort((a,b)=>b.timestamp-a.timestamp);
+  if (!sorted.length) { tbody.innerHTML=''; empty.style.display='block'; return; }
+  empty.style.display='none';
+  tbody.innerHTML = sorted.map(d => {
+    const type = d.type.replace(/_/g,' ').replace(/\b\w/g,l=>l.toUpperCase());
+    const status = d.anomaly?`<span class="badge badge-warning">⚠ ${d.anomalyReason||'Alert'}</span>`:'<span class="badge badge-normal">✓ Normal</span>';
+    const date = new Date(d.timestamp).toLocaleString('en-IN',{day:'numeric',month:'short',year:'numeric',hour:'2-digit',minute:'2-digit'});
+    return `<tr><td>${type}</td><td><strong>${d.value} ${d.unit||''}</strong></td><td>${d.source}</td><td>${status}</td><td style="color:var(--text2);font-size:13px">${date}</td></tr>`;
+  }).join('');
+}
+
+function clearHistory() {
+  if (!confirm('Clear all health data?')) return;
+  state.healthData = [];
+  saveData();
+  renderHistory();
+  updateMetricCards();
+  updateRiskGauge();
+  renderRecentActivity();
+  showToast('Health history cleared');
+}
+
+// ==================== APPOINTMENTS ====================
+function openAddAptForm() {
+  const form = document.getElementById('addAptForm');
+  form.style.display = form.style.display==='none'?'block':'none';
+  const today = new Date(); today.setDate(today.getDate()+1);
+  document.getElementById('aptDate').value = today.toISOString().split('T')[0];
+  document.getElementById('aptTime').value = '10:00';
+}
+
+function addAppointment() {
+  const doc = document.getElementById('aptDoctor').value;
+  const spec = document.getElementById('aptSpecialty').value;
+  const date = document.getElementById('aptDate').value;
+  const time = document.getElementById('aptTime').value;
+  if (!doc||!date) { showToast('Please fill required fields','error'); return; }
+  const apt = {id:Date.now(),userId:state.user.id,doctorName:doc,specialty:spec,date:new Date(date).getTime(),time,type:document.getElementById('aptType').value,status:'scheduled',notes:document.getElementById('aptNotes').value};
+  state.appointments.push(apt);
+  saveData();
+  renderAppointments();
+  document.getElementById('addAptForm').style.display='none';
+  showToast('Appointment booked successfully');
+}
+
+function renderAppointments() {
+  const list = document.getElementById('aptList');
+  const empty = document.getElementById('aptEmpty');
+  const apts = state.appointments.sort((a,b)=>a.date-b.date);
+  if (!apts.length) { list.innerHTML=''; empty.style.display='block'; return; }
+  empty.style.display='none';
+  list.innerHTML = apts.map(a => {
+    const d = new Date(a.date);
+    const day = d.getDate();
+    const month = d.toLocaleString('en',{month:'short'}).toUpperCase();
+    const typeLabels = {in_person:'In Person',video:'Video Call',phone:'Phone'};
+    return `<div class="apt-card">
+      <div class="apt-date-box"><div class="apt-day">${day}</div><div class="apt-month">${month}</div></div>
+      <div class="apt-details">
+        <div class="apt-name">${a.doctorName}</div>
+        <div class="apt-spec">${a.specialty||'General'}</div>
+        ${a.notes?`<div style="font-size:12px;color:var(--text3);margin-top:4px">${a.notes}</div>`:''}
+      </div>
+      <div style="text-align:right;flex-shrink:0">
+        <div class="apt-time">${a.time}</div>
+        <div class="apt-type-badge" style="margin-top:8px">${typeLabels[a.type]||a.type}</div>
+        <button onclick="cancelApt(${a.id})" style="background:none;border:none;color:#ef4444;font-size:12px;cursor:pointer;margin-top:8px">Cancel</button>
+      </div>
+    </div>`;
+  }).join('');
+}
+
+function cancelApt(id) {
+  state.appointments = state.appointments.filter(a=>a.id!==id);
+  saveData();
+  renderAppointments();
+  showToast('Appointment cancelled');
+}
+
+// ==================== FAMILY ====================
+function renderFamily() {
+  const grid = document.getElementById('familyGrid');
+  if (!state.family.length) {
+    grid.innerHTML = `<div class="empty-state" style="grid-column:1/-1">
+      <svg viewBox="0 0 48 48" fill="none"><circle cx="18" cy="16" r="6" stroke-width="2"/><circle cx="30" cy="14" r="5" stroke-width="2"/><path d="M6 38c0-6.6 5.4-12 12-12s12 5.4 12 12" stroke-width="2"/><path d="M34 38c0-4.4-2.7-8-6.5-9.8" stroke-width="2"/></svg>
+      <h3>No family members</h3><p>Add family members to monitor their health together.</p>
+    </div>`;
+    return;
+  }
+  grid.innerHTML = state.family.map(m => `
+    <div class="family-card">
+      <div class="family-avatar">${m.initials||m.name.slice(0,2).toUpperCase()}</div>
+      <div class="family-name">${m.name}</div>
+      <div class="family-rel">${m.relationship} · Age ${m.age||'—'}</div>
+      <div class="family-vitals">
+        <div class="family-vital"><div class="fv-val">${m.latestHR||'—'}</div><div class="fv-label">bpm</div></div>
+        <div class="family-vital"><div class="fv-val" style="font-size:13px">${m.latestBP||'—'}</div><div class="fv-label">BP</div></div>
+      </div>
+    </div>`).join('');
+}
+
+function addFamilyMember() {
+  const name = prompt('Family member name:');
+  if (!name) return;
+  const rel = prompt('Relationship (parent/child/spouse/sibling):');
+  const member = {id:Date.now(),userId:state.user.id,name:name.trim(),relationship:rel||'other',initials:name.trim().split(' ').map(n=>n[0]).join('').slice(0,2).toUpperCase(),age:Math.floor(Math.random()*40)+20,latestHR:60+Math.floor(Math.random()*30),latestBP:'115/75'};
+  state.family.push(member);
+  saveData();
+  renderFamily();
+  showToast(name+' added to family circle');
+}
+
+// ==================== ALERTS ====================
+function renderAlerts() {
+  const list = document.getElementById('alertsList');
+  const icons = {anomaly:'🔴',recommendation:'💡',appointment:'📅',reminder:'⏰',risk_alert:'⚠️'};
+  const iconBg = {anomaly:'ai-critical',recommendation:'ai-info',appointment:'ai-success',reminder:'ai-warning'};
+  list.innerHTML = state.alerts.map(a => `
+    <div class="alert-item ${a.read?'':'unread'}" id="alert-${a.id}">
+      <div class="alert-icon ${iconBg[a.type]||'ai-info'}" style="font-size:16px">${icons[a.type]||'ℹ️'}</div>
+      <div class="alert-content">
+        <div class="alert-title">${a.title}</div>
+        <div class="alert-msg">${a.message}</div>
+        <div class="alert-time">${new Date(a.createdAt).toLocaleString('en-IN',{day:'numeric',month:'short',hour:'2-digit',minute:'2-digit'})}</div>
+      </div>
+      <div style="display:flex;flex-direction:column;align-items:flex-end;gap:8px">
+        <span class="alert-sev sev-${a.severity}">${a.severity}</span>
+        ${!a.read?`<button onclick="markRead(${a.id})" style="background:none;border:none;color:var(--accent);font-size:12px;cursor:pointer;font-family:'DM Sans',sans-serif">Mark read</button>`:''}
+      </div>
+    </div>`).join('');
+}
+
+function markRead(id) {
+  const alert = state.alerts.find(a=>a.id===id);
+  if (alert) { alert.read=true; saveData(); renderAlerts(); updateAlertBadge(); }
+}
+
+function markAllRead() {
+  state.alerts.forEach(a=>a.read=true);
+  saveData();
+  renderAlerts();
+  updateAlertBadge();
+  showToast('All alerts marked as read');
+}
+
+function updateAlertBadge() {
+  const unread = state.alerts.filter(a=>!a.read).length;
+  document.getElementById('alertBadge').textContent = unread;
+  document.getElementById('alertBadge').style.display = unread?'':'none';
+  document.getElementById('alertDot').style.display = unread?'':'none';
+}
+
+// ==================== PROFILE ====================
+function loadProfile() {
+  if (!state.user) return;
+  document.getElementById('pName').value = state.user.name||'';
+  document.getElementById('pAge').value = state.user.age||'';
+  document.getElementById('pGender').value = state.user.gender||'male';
+  document.getElementById('pWeight').value = state.user.weight||'';
+  document.getElementById('pHeight').value = state.user.height||'';
+  document.getElementById('pEmergency').value = state.user.emergencyContact||'';
+}
+
+function saveProfile() {
+  state.user.name = document.getElementById('pName').value;
+  state.user.age = document.getElementById('pAge').value;
+  state.user.gender = document.getElementById('pGender').value;
+  state.user.weight = document.getElementById('pWeight').value;
+  state.user.height = document.getElementById('pHeight').value;
+  state.user.emergencyContact = document.getElementById('pEmergency').value;
+  localStorage.setItem('hv_user', JSON.stringify(state.user));
+  const users = JSON.parse(localStorage.getItem('hv_users')||'[]');
+  const idx = users.findIndex(u=>u.id===state.user.id);
+  if (idx>=0) { users[idx]=state.user; localStorage.setItem('hv_users',JSON.stringify(users)); }
+  updateUserUI();
+  showToast('Profile saved successfully');
+}
+
+// ==================== CHATBOT ====================
+function toggleChat() {
+  const win = document.getElementById('chatWindow');
+  state.chatOpen = !state.chatOpen;
+  win.classList.toggle('open', state.chatOpen);
+  if (state.chatOpen) {
+    loadChatHistory();
+    document.getElementById('chatInput').focus();
+  }
+}
+
+function loadChatHistory() {
+  const msgs = document.getElementById('chatMessages');
+  if (state.chatHistory.length === 0) return;
+  msgs.innerHTML = '';
+  state.chatHistory.forEach(m => {
+    const el = document.createElement('div');
+    el.className = 'message '+m.sender;
+    el.textContent = m.text;
+    msgs.appendChild(el);
+  });
+  msgs.scrollTop = msgs.scrollHeight;
+}
+
+function sendChatMessage() {
+  const input = document.getElementById('chatInput');
+  const text = input.value.trim();
+  if (!text) return;
+  addChatMessage(text,'user');
+  input.value='';
+  showTypingDots();
+  setTimeout(() => {
+    removeTypingDots();
+    const resp = getChatResponse(text);
+    addChatMessage(resp,'bot');
+  }, 800+Math.random()*500);
+}
+
+function addChatMessage(text, sender) {
+  const msgs = document.getElementById('chatMessages');
+  const el = document.createElement('div');
+  el.className = 'message '+sender;
+  el.textContent = text;
+  msgs.appendChild(el);
+  msgs.scrollTop = msgs.scrollHeight;
+  state.chatHistory.push({text,sender,time:Date.now()});
+  if (state.chatHistory.length>50) state.chatHistory=state.chatHistory.slice(-50);
+  saveData();
+}
+
+function showTypingDots() {
+  const msgs = document.getElementById('chatMessages');
+  const el = document.createElement('div');
+  el.className='message bot typing-indicator'; el.id='typingDots';
+  el.innerHTML='<span></span><span></span><span></span>';
+  msgs.appendChild(el); msgs.scrollTop=msgs.scrollHeight;
+}
+
+function removeTypingDots() {
+  const el=document.getElementById('typingDots'); if(el)el.remove();
+}
+
+function getChatResponse(msg) {
+  const m = msg.toLowerCase();
+  const data = state.healthData;
+  const latest = (type) => data.filter(d=>d.type===type).sort((a,b)=>b.timestamp-a.timestamp)[0];
+  
+  if (m.includes('heart') || m.includes('bpm') || m.includes('pulse')) {
+    const hr = latest('heart_rate');
+    return hr ? `Your latest heart rate is ${hr.value} bpm — ${hr.value<60?'that\'s a bit low, consider a checkup':hr.value>100?'elevated. Try deep breathing or resting':' within the normal range (60-100 bpm)'}. Keep monitoring regularly!` 
+    : '❤️ Normal resting heart rate is 60-100 bpm. Track yours by adding data in the Health Data section!';
+  }
+  if (m.includes('blood pressure') || m.includes('bp')) {
+    const bp = latest('blood_pressure');
+    return bp ? `Your latest blood pressure is ${bp.value} — ${bp.systolic<120?'excellent! Within normal range':'watch this closely'}. Reducing salt and staying active helps.`
+    : '📊 Ideal blood pressure is below 120/80 mmHg. A healthy diet, exercise, and stress management all help.';
+  }
+  if (m.includes('sleep')) {
+    const sl = latest('sleep');
+    return sl ? `You got ${sl.value} hours recently — ${sl.value>=7?'great sleep! Rest supports immune function and memory':'aim for 7-9 hours. Try a consistent sleep schedule and limiting screens before bed.'}` 
+    : '😴 Adults need 7-9 hours of sleep. Good sleep habits: consistent bedtime, dark room, and no caffeine after 2pm.';
+  }
+  if (m.includes('sugar') || m.includes('glucose') || m.includes('diabetes')) {
+    const bs = latest('blood_sugar');
+    return bs ? `Your blood sugar is ${bs.value} mg/dL — ${bs.value<70?'low! Have a quick carbohydrate':bs.value>140?'elevated. Consult your doctor and watch your diet':'in the normal fasting range (70-140)'}!`
+    : '🔬 Normal blood sugar is 70-140 mg/dL. Track yours after meals for valuable health insights.';
+  }
+  if (m.includes('step') || m.includes('walk') || m.includes('exercise')) {
+    const st = latest('steps');
+    return st ? `You logged ${Number(st.value).toLocaleString()} steps — ${st.value>=10000?'amazing! You hit your daily goal!':'keep going! Aim for 10,000 steps. Even a 15-minute walk helps.'}` 
+    : '🚶 The goal is 10,000 steps daily. Regular walking improves heart health, mood, and metabolism.';
+  }
+  if (m.includes('tip') || m.includes('advice') || m.includes('recommend')) {
+    const tips = ['💧 Drink 8 glasses of water daily to stay hydrated','🥦 Eat 5 servings of fruits and vegetables each day','🧘 10 minutes of meditation reduces stress significantly','🌞 Morning sunlight regulates your sleep-wake cycle','💪 Strength training 2x weekly boosts metabolism and bone density'];
+    return tips[Math.floor(Math.random()*tips.length)];
+  }
+  if (m.includes('appointment') || m.includes('doctor')) {
+    const next = state.appointments.sort((a,b)=>a.date-b.date)[0];
+    return next ? `Your next appointment is with ${next.doctorName} on ${new Date(next.date).toLocaleDateString('en-IN',{weekday:'long',month:'long',day:'numeric'})} at ${next.time}.`
+    : '📅 You have no upcoming appointments. Book one through the Appointments section!';
+  }
+  if (m.includes('risk') || m.includes('score') || m.includes('health score')) {
+    const unread = state.alerts.filter(a=>!a.read&&a.type==='anomaly').length;
+    return `Based on your recent data, your health risk score is ${document.getElementById('riskScore')?.textContent||'calculating...'}. ${unread>0?`You have ${unread} unread health alert(s) to review.`:'All your recent readings look good!'}`;
+  }
+  if (m.includes('hello') || m.includes('hi') || m.includes('hey')) {
+    return `Hello ${state.user?.name?.split(' ')[0]||'there'}! 👋 I'm your AI health assistant. You can ask me about your heart rate, blood pressure, sleep, blood sugar, upcoming appointments, or any health tips!`;
+  }
+  if (m.includes('help') || m.includes('what can you')) {
+    return '🤖 I can help you with:\n• Your recent health metrics\n• Health tips & advice\n• Appointment reminders\n• Risk score explanation\n• Sleep, nutrition, exercise guidance\n\nJust ask!';
+  }
+  return `I'm here to help with your health questions! Try asking about your heart rate, blood pressure, sleep quality, blood sugar, step count, or for general health tips. What would you like to know?`;
+}
+
+// ==================== TOAST ====================
+function showToast(msg, type='success') {
+  const toast = document.getElementById('toast');
+  const icon = toast.querySelector('.toast-icon');
+  document.getElementById('toastMsg').textContent = msg;
+  icon.className = 'toast-icon '+(type==='error'||type==='warning'?'ti-error':'ti-success');
+  toast.classList.add('show');
+  setTimeout(()=>toast.classList.remove('show'),3000);
+}
+
+// Init metric for health page
+selectMetric('heart_rate', document.querySelector('.input-card'));
+</script>
+</body>
+</html>
